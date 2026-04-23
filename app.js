@@ -22,9 +22,11 @@ const app = express();
 app.use(
   cors({
     origin: [
-      'http://localhost:5173',
-      'https://mzilikazi-barbourfields-church-of-the-nazaren-5tvbifg7e.vercel.app',
+      'http://localhost:5173', // local dev
+      'https://mzilikazi-barbourfields-church-of-the-nazaren-at153h3ku.vercel.app', // Vercel frontend
     ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   })
 );
@@ -54,8 +56,6 @@ app.use('/api/events', eventRoutes);
 app.use('/api/leaders', leaderRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/partnership', partnershipRoutes);
-
-// Uploads route
 app.use('/api/uploads', uploadRoutes);
 
 /* =========================
