@@ -1,30 +1,8 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
 /**
- * Ensure uploads folder exists (prevents ENOENT crashes)
+ * Allowed file types
  */
-const uploadDir = 'uploads/';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-/**
- * Storage config
- */
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-
-  filename: function (req, file, cb) {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeName = file.fieldname.replace(/\s+/g, '-');
-    cb(null, `${Date.now()}-${safeName}${ext}`);
-  },
-});
-
 const allowedMimeTypes = [
   // Images
   'image/jpeg',
@@ -57,13 +35,16 @@ const fileFilter = (req, file, cb) => {
 };
 
 /**
+ * Use MEMORY storage (IMPORTANT for Render)
+ */
+const storage = multer.memoryStorage();
+
+/**
  * Multer instance
  */
 const upload = multer({
   storage,
   fileFilter,
-
-  // optional safety limits
   limits: {
     fileSize: 20 * 1024 * 1024, // 20MB
   },
@@ -74,10 +55,7 @@ const upload = multer({
  */
 module.exports = {
   upload,
-
   uploadSingle: fieldName => upload.single(fieldName),
-
   uploadMultiple: (fieldName, maxCount = 10) => upload.array(fieldName, maxCount),
-
   uploadFields: fields => upload.fields(fields),
 };

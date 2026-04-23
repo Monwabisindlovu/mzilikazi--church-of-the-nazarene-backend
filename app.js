@@ -12,24 +12,41 @@ const authRoutes = require('./src/routes/authRoutes');
 const partnershipRoutes = require('./src/routes/partnershipRoutes');
 const usersRoutes = require('./src/routes/users');
 const leaderRoutes = require('./src/routes/leaderRoutes');
-const uploadRoutes = require('./src/routes/uploadRoutes'); // ✅ ADD THIS
+const uploadRoutes = require('./src/routes/uploadRoutes');
 
 const app = express();
 
-// Middleware
-app.use(cors());
+/* =========================
+   CORS CONFIG (UPDATED)
+========================= */
+app.use(
+  cors({
+    origin: [
+      'http://localhost:5173',
+      'https://mzilikazi-barbourfields-church-of-the-nazaren-5tvbifg7e.vercel.app',
+    ],
+    credentials: true,
+  })
+);
+
+/* =========================
+   MIDDLEWARE
+========================= */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logger
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
-// Static uploads folder
+/* =========================
+   STATIC FILES
+========================= */
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes - ORDER MATTERS
+/* =========================
+   ROUTES
+========================= */
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/announcements', announcementRoutes);
@@ -38,10 +55,12 @@ app.use('/api/leaders', leaderRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/partnership', partnershipRoutes);
 
-// ✅ ADD THIS (this fixes your 404 on uploads)
+// Uploads route
 app.use('/api/uploads', uploadRoutes);
 
-// Livestream routes
+/* =========================
+   LIVESTREAM ROUTES
+========================= */
 try {
   const livestreamRoutes = require('./src/routes/livestreamRoutes');
   console.log('✅ Livestream routes loaded');
@@ -50,12 +69,15 @@ try {
   console.error('❌ Failed to load livestream routes:', err.message);
 
   const Livestream = require('./src/models/Livestream');
+
   app.get('/api/livestream/active', async (req, res) => {
     try {
       const livestream = await Livestream.findOne({ isActive: true });
+
       if (!livestream) {
         return res.status(404).json({ message: 'No active livestream' });
       }
+
       res.json(livestream);
     } catch (err) {
       res.status(500).json({ message: err.message });
@@ -63,12 +85,16 @@ try {
   });
 }
 
-// Health check
+/* =========================
+   HEALTH CHECK
+========================= */
 app.get('/', (req, res) => {
   res.json({ message: 'Church API is running' });
 });
 
-// Error handler
+/* =========================
+   ERROR HANDLER
+========================= */
 app.use(errorHandler);
 
 module.exports = app;
