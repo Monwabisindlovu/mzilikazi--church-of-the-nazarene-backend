@@ -17,14 +17,23 @@ const uploadRoutes = require('./src/routes/uploadRoutes');
 const app = express();
 
 /* =========================
-   CORS CONFIG (UPDATED)
+   CORS CONFIG (DYNAMIC)
 ========================= */
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173', // local dev
-      'https://mzilikazi-barbourfields-church-of-the-nazaren-at153h3ku.vercel.app', // Vercel frontend
-    ],
+    origin: (origin, callback) => {
+      // Always allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      // Allow localhost for dev
+      if (origin === 'http://localhost:5173') return callback(null, true);
+
+      // Allow any *.vercel.app subdomain
+      if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+
+      // Otherwise block
+      return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
