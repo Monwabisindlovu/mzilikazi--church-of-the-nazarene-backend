@@ -9,12 +9,17 @@ const mediaSchema = new mongoose.Schema(
       type: String,
       enum: ['image', 'video', 'audio'],
       required: true,
+      default: 'image',
     },
 
     // Cloudinary data
     url: { type: String, required: true },
+
     publicId: { type: String, required: true },
+
     thumbnail: { type: String },
+
+    // useful for videos/audio
     duration: { type: Number },
 
     category: {
@@ -31,6 +36,7 @@ const mediaSchema = new mongoose.Schema(
 
     fileSize: { type: Number },
     format: { type: String },
+
     dimensions: {
       width: { type: Number },
       height: { type: Number },

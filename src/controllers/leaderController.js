@@ -26,23 +26,28 @@ exports.getLeaderById = async (req, res) => {
   }
 };
 
-// Create leader
+// CREATE LEADER
 exports.createLeader = async (req, res) => {
   try {
-    const { name, title, ministry, bio, displayOrder } = req.body;
+    const { name, title, ministry, bio, displayOrder, is_pastor } = req.body;
 
     let photoUrl = null;
     let photoPublicId = null;
 
-    // ✅ Handle FILE upload (multer)
+    // Handle FILE upload
     if (req.file) {
       const uploadResult = await cloudinaryService.uploadImage(req.file.path, 'leaders');
       photoUrl = uploadResult.secure_url;
       photoPublicId = uploadResult.public_id;
     }
-    // ✅ Handle URL from FileUploader
+    // Handle URL
     else if (req.body.photo) {
       photoUrl = req.body.photo;
+    }
+
+    // ⭐ Ensure only one pastor exists
+    if (is_pastor === 'true' || is_pastor === true) {
+      await Leader.updateMany({ is_pastor: true }, { $set: { is_pastor: false } });
     }
 
     const leader = await Leader.create({
@@ -53,6 +58,7 @@ exports.createLeader = async (req, res) => {
       photo: photoUrl,
       photoPublicId,
       displayOrder: displayOrder || 0,
+      is_pastor: is_pastor === 'true' || is_pastor === true,
     });
 
     res.status(201).json(leader);
@@ -62,10 +68,10 @@ exports.createLeader = async (req, res) => {
   }
 };
 
-// Update leader
+// UPDATE LEADER
 exports.updateLeader = async (req, res) => {
   try {
-    const { name, title, ministry, bio, displayOrder } = req.body;
+    const { name, title, ministry, bio, displayOrder, is_pastor } = req.body;
 
     const leader = await Leader.findById(req.params.id);
 
@@ -73,7 +79,7 @@ exports.updateLeader = async (req, res) => {
       return res.status(404).json({ message: 'Leader not found' });
     }
 
-    // ✅ Handle FILE upload (multer)
+    // Handle FILE upload
     if (req.file) {
       if (leader.photoPublicId) {
         await cloudinaryService.deleteImage(leader.photoPublicId);
@@ -83,13 +89,21 @@ exports.updateLeader = async (req, res) => {
       leader.photo = uploadResult.secure_url;
       leader.photoPublicId = uploadResult.public_id;
     }
-    // ✅ Handle URL from FileUploader
+    // Handle URL
     else if (req.body.photo) {
       leader.photo = req.body.photo;
-      // Note: no publicId here because it's already hosted
     }
 
-    // ✅ Update other fields
+    // ⭐ Ensure only one pastor exists
+    if (is_pastor === 'true' || is_pastor === true) {
+      await Leader.updateMany({ is_pastor: true }, { $set: { is_pastor: false } });
+
+      leader.is_pastor = true;
+    } else if (is_pastor !== undefined) {
+      leader.is_pastor = false;
+    }
+
+    // Update fields
     if (name) leader.name = name;
     if (title) leader.title = title;
     if (ministry) leader.ministry = ministry;
@@ -104,7 +118,7 @@ exports.updateLeader = async (req, res) => {
   }
 };
 
-// Delete leader
+// DELETE LEADER
 exports.deleteLeader = async (req, res) => {
   try {
     const leader = await Leader.findById(req.params.id);
@@ -113,7 +127,6 @@ exports.deleteLeader = async (req, res) => {
       return res.status(404).json({ message: 'Leader not found' });
     }
 
-    // Delete photo from Cloudinary (only if it exists)
     if (leader.photoPublicId) {
       await cloudinaryService.deleteImage(leader.photoPublicId);
     }

@@ -34,6 +34,10 @@ const leaderSchema = new mongoose.Schema(
     phone: {
       type: String,
     },
+    is_pastor: {
+      type: Boolean,
+      default: false,
+    },
 
     socialLinks: {
       facebook: String,

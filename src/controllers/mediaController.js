@@ -4,14 +4,25 @@ const { deleteMedia } = require('../services/cloudinaryService');
 /* ================= GET ================= */
 const getMedia = async (req, res) => {
   try {
-    const media = await Media.find().sort({ createdAt: -1 }).populate('uploadedBy', 'name email');
+    const media = await Media.find()
+      .sort({ createdAt: -1 })
+      .populate('uploadedBy', 'name email');
 
-    // Optional: normalize fields for frontend
-    const formatted = media.map(item => ({
-      ...item.toObject(),
-      media_type: item.type, // frontend expects media_type
-      is_featured: item.isFeatured, // frontend expects is_featured
-    }));
+    const formatted = media.map(item => {
+      const obj = item.toObject();
+
+      return {
+        ...obj,
+
+        // 🔥 SINGLE SOURCE OF TRUTH (IMPORTANT)
+        url: obj.url,
+        media_type: obj.type,
+
+        // optional alias (safe for old code)
+        type: obj.type,
+        is_featured: obj.isFeatured,
+      };
+    });
 
     res.json(formatted);
   } catch (error) {
@@ -29,27 +40,30 @@ const uploadNewMedia = async (req, res) => {
       return res.status(400).json({ message: 'url is required' });
     }
 
-    const publicId = url.split('/').slice(-1)[0].split('.')[0];
+    const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(url);
 
     const media = new Media({
       title,
       description,
 
-      // ✅ Match your model fields
-      type: media_type || 'image',
-      url: url,
+      type: isVideo ? 'video' : (media_type || 'image'),
+      url,
+
       category: category || 'Other',
-      isFeatured: is_featured || false, // ✅ camelCase
-      publicId,
+      isFeatured: is_featured ?? false,
+
+      publicId: url.split('/').pop()?.split('.')[0],
       uploadedBy: req.user?._id,
     });
 
     await media.save();
 
-    // Normalize for frontend
     const formatted = {
       ...media.toObject(),
+
+      url: media.url,
       media_type: media.type,
+      type: media.type,
       is_featured: media.isFeatured,
     };
 
@@ -60,13 +74,58 @@ const uploadNewMedia = async (req, res) => {
   }
 };
 
+/* ================= UPDATE ================= */
+const updateMedia = async (req, res) => {
+  try {
+    const { title, description, media_type, category, is_featured, url } = req.body;
+
+    const updateData = {
+      title,
+      description,
+      category,
+      isFeatured: is_featured,
+    };
+
+    if (url) {
+      updateData.url = url;
+      updateData.type = /\.(mp4|webm|ogg|mov)$/i.test(url)
+        ? 'video'
+        : (media_type || 'image');
+    }
+
+    const media = await Media.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+    });
+
+    if (!media) {
+      return res.status(404).json({ message: 'Media not found' });
+    }
+
+    const formatted = {
+      ...media.toObject(),
+
+      url: media.url,
+      media_type: media.type,
+      type: media.type,
+      is_featured: media.isFeatured,
+    };
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Update media error:', error);
+    res.status(500).json({ message: 'Error updating media' });
+  }
+};
+
 /* ================= DELETE ================= */
 const deleteMediaById = async (req, res) => {
   try {
     const media = await Media.findById(req.params.id);
-    if (!media) return res.status(404).json({ message: 'Media not found' });
 
-    // Delete from Cloudinary if publicId exists
+    if (!media) {
+      return res.status(404).json({ message: 'Media not found' });
+    }
+
     if (media.publicId) {
       await deleteMedia(media.publicId);
     }
@@ -83,5 +142,6 @@ const deleteMediaById = async (req, res) => {
 module.exports = {
   getMedia,
   uploadNewMedia,
+  updateMedia,
   deleteMediaById,
 };
